@@ -1,0 +1,11 @@
+# Crypto Paper Trading Telegram Bot
+
+Telegram bot that simulates crypto trading with virtual money using real Binance prices.
+
+## Features
+- Real-time prices from Binance
+- Virtual balance
+- Buy / Sell crypto
+- Portfolio tracking
+- User ranking
+- Future: Telegram Mini App

@@ -1,0 +1,26 @@
+{
+  "name": "crypto-paper-trading-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lykrew/crypto-paper-trading-bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lykrew/crypto-paper-trading-bot/issues"
+  },
+  "homepage": "https://github.com/lykrew/crypto-paper-trading-bot#readme",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "dotenv": "^17.2.4",
+    "node-telegram-bot-api": "^0.67.0"
+  }
+}
