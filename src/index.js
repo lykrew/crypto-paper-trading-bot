@@ -24,4 +24,5 @@ bot.onText(/\/price (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, 'Ошибка. Возможно, такой монеты не существует.')
     }
 })
+
 console.log('Bot is running...');
