@@ -60,6 +60,16 @@ bot.onText(/\/buy (.+) (\d+)/, async (msg, match) => {
     }
 });
 
+bot.onText(/\/portfolio/, (msg) => {
+    const chatId = msg.chat.id;
+    const user = getUser(chatId);
 
+    let text = `💼 Твой портфель:\nБаланс: ${user.balance.toFixed(2)}$\n\n`;
+
+    for (const symbol in user.portfolio) {
+        text += `${symbol}: ${user.portfolio[symbol].toFixed(6)}\n`;
+    }
+    bot.sendMessage(chatId, text);
+}); 
 
 console.log('Bot is running...');
