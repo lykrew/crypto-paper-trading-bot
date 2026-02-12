@@ -6,11 +6,17 @@ const { getUser, updateUser } = require('./services/user_storage.js');
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    const user = getUser(chatId);
+
     bot.sendMessage(
-        msg.chat.id,
-        '🚀 Добро пожаловать в Crypto Paper Trading Bot!\n\nУ тебя есть 1000$ виртуальных денег.'
+        chatId,
+        `🚀 Добро пожаловать в Crypto Paper Trading Bot!
+
+Твой текущий баланс: ${user.balance.toFixed(2)}$`
     );
 });
+
 
 bot.onText(/\/price (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
@@ -22,7 +28,8 @@ bot.onText(/\/price (.+)/, async (msg, match) => {
         bot.sendMessage(chatId, `💰 Цена ${symbol}: ${price} USDT`);
     } catch (error) {
         console.log('PRICE ERROR:', error.response?.data || error.message);
-        bot.sendMessage(chatId, 'Ошибка. Возможно, такой монеты не существует.')
+        const errorMsg = error.response?.data?.msg || 'Ошибка запроса.';
+        bot.sendMessage(chatId, `❌ ${errorMsg}`);
     }
 })
 
@@ -56,20 +63,34 @@ bot.onText(/\/buy (.+) (\d+)/, async (msg, match) => {
             `✅ Куплено ${quantity.toFixed(6)} ${symbol}\nОстаток: ${user.balance.toFixed(2)}$`
         );
     } catch (e) {
-        bot.sendMessage(chatId, 'Ошибка при покупке.')
+        const errorMsg = e.response?.data?.msg || 'Не удалось получить данные с Binance.';
+        bot.sendMessage(chatId, `❌ Ошибка: ${errorMsg}`);
     }
 });
 
-bot.onText(/\/portfolio/, (msg) => {
+bot.onText(/\/portfolio/, async (msg) => {
     const chatId = msg.chat.id;
     const user = getUser(chatId);
 
     let text = `💼 Твой портфель:\nБаланс: ${user.balance.toFixed(2)}$\n\n`;
+    let totalValue = user.balance;
 
     for (const symbol in user.portfolio) {
-        text += `${symbol}: ${user.portfolio[symbol].toFixed(6)}\n`;
+        try {
+            const quantity = user.portfolio[symbol];
+            const price = await getPrice(symbol);
+
+            const value = quantity * price;
+            totalValue += value;
+
+            text += `${symbol}: ${quantity.toFixed(6)} ≈ ${value.toFixed(2)}$\n`;
+        } catch (e) {
+            text += `${symbol}: ошибка получения цены\n`;
+        }
     }
+    text += `\n💰 Общая стоимость портфеля: ${totalValue.toFixed(2)}$`;
+
     bot.sendMessage(chatId, text);
-}); 
+});
 
 console.log('Bot is running...');
