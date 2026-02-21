@@ -1,38 +1,46 @@
 const fs = require('fs');
 const path = require('path');
 
-const filePath = path.join(__dirname, '../../data/users.json');
+const dbPath = path.join(__dirname, '../storage/db.json');
 
-function getUsers() {
-    if (!fs.existsSync(filePath)) {
-        return {};
-    }
+// Чтение базы
+function readDB() {
+  if (!fs.existsSync(dbPath)) {
+    return {};
+  }
 
-    const data = fs.readFileSync(filePath);
-    return JSON.parse(data);
+  const data = fs.readFileSync(dbPath, 'utf8');
+  return data ? JSON.parse(data) : {};
 }
 
-function saveUsers(users) {
-    fs.writeFileSync(filePath, JSON.stringify(users, null, 2));
+// Запись базы
+function writeDB(data) {
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
 }
 
-function getUser(chatId) {
-    const users = getUsers();
+// Получить пользователя
+function getUser(userId) {
+  const db = readDB();
 
-    if(!users[chatId]) {
-        users[chatId] = {
-            balance: 1000,
-            portfolio: {}
-        };
-        saveUsers(users);
-    }
-    return users[chatId];
+  if (!db[userId]) {
+    db[userId] = {
+      balance: 10000,
+      portfolio: {}
+    };
+    writeDB(db);
+  }
+
+  return db[userId];
 }
 
-function updateUser(chatId, userData) {
-    const users = getUsers();
-    users[chatId] = userData;
-    saveUsers(users);
+// Обновить пользователя
+function updateUser(userId, userData) {
+  const db = readDB();
+  db[userId] = userData;
+  writeDB(db);
 }
 
-module.exports = { getUser, updateUser };
+module.exports = {
+  getUser,
+  updateUser
+};
