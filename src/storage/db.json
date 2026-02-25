@@ -1,16 +1,11 @@
 {
   "8122092283": {
-    "balance": 7500,
+    "balance": 8995.34918724566,
     "portfolio": {
       "BTCUSDT": {
-        "quantity": 0.015054973990274187,
+        "quantity": 0.015094651768647894,
         "totalSpent": 1000,
-        "avgPrice": 66423.23
-      },
-      "ETHUSDT": {
-        "quantity": 0.7624469463999797,
-        "totalSpent": 1500,
-        "avgPrice": 1967.35
+        "avgPrice": 66248.63
       }
     }
   }

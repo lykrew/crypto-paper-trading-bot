@@ -120,4 +120,67 @@ PnL: ${pnl.toFixed(2)}$ (${pnlPercent.toFixed(2)}%)
     bot.sendMessage(chatId, text);
 });
 
+bot.onText(/\/sell (.+) (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const symbolInput = match[1];
+    const amountArg = match[2];
+
+    const user = getUser(chatId);
+
+    const symbol = symbolInput.toUpperCase().endsWith('USDT')
+        ? symbolInput.toUpperCase()
+        : symbolInput.toUpperCase() + 'USDT';
+
+    if (!user.portfolio[symbol]) {
+        return bot.sendMessage(chatId, '❌ У тебя нет этой монеты');
+    }
+
+    try {
+        const currentPrice = await getPrice(symbol);
+
+        let quantityToSell;
+        let amountUSD;
+
+        if (amountArg.toLowerCase() === 'all') {
+            // продаём всю позицию
+            quantityToSell = user.portfolio[symbol].quantity;
+            amountUSD = quantityToSell * currentPrice;
+        } else {
+            // продаём на указанную сумму в USD
+            amountUSD = Number(amountArg);
+            if (Number.isNaN(amountUSD) || amountUSD <= 0) {
+                return bot.sendMessage(chatId, '❌ Неверная сумма для продажи');
+            }
+            quantityToSell = amountUSD / currentPrice;
+        }
+
+        if (quantityToSell > user.portfolio[symbol].quantity) {
+            return bot.sendMessage(chatId, '❌ Недостаточно монет');
+        }
+
+        const avgPrice = user.portfolio[symbol].avgPrice;
+        const pnl = (currentPrice - avgPrice) * quantityToSell;
+
+        user.portfolio[symbol].quantity -= quantityToSell;
+        user.balance += amountUSD;
+
+        if (user.portfolio[symbol].quantity <= 0.000001) {
+            delete user.portfolio[symbol];
+        }
+
+        updateUser(chatId, user);
+
+        bot.sendMessage(
+            chatId,
+            `✅ Продано ${quantityToSell.toFixed(6)} ${symbol}
+Цена: ${currentPrice.toFixed(2)}$
+PnL: ${pnl.toFixed(2)}$
+Баланс: ${user.balance.toFixed(2)}$`
+        );
+    } catch (e) {
+        const errorMsg = e.response?.data?.msg || 'Ошибка продажи';
+        bot.sendMessage(chatId, `❌ ${errorMsg}`);
+    }
+});
+
 console.log('Bot is running...');
