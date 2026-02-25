@@ -5,6 +5,15 @@ const { getUser, updateUser } = require('./services/user_storage.js');
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
+bot.setMyCommands([
+    { command: 'start', description: 'Запустить бота' },
+    { command: 'price', description: 'Узнать цену монеты (/price BTC)' },
+    { command: 'buy', description: 'Купить монету (/buy BTC 100)' },
+    { command: 'sell', description: 'Продать монету (/sell BTC 100 или /sell BTC all)' },
+    { command: 'portfolio', description: 'Показать портфель' },
+    { command: 'sell_all', description: 'Закрыть все позиции (/sell all)' },
+  ]);
+
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const user = getUser(chatId);
