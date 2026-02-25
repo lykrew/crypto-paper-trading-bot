@@ -1,6 +1,12 @@
 {
   "8122092283": {
-    "balance": 9995.022468129002,
-    "portfolio": {}
+    "balance": 8495.022468129002,
+    "portfolio": {
+      "BTCUSDT": {
+        "quantity": 0.02225093086769285,
+        "totalSpent": 1500,
+        "avgPrice": 67412.91
+      }
+    }
   }
 }

@@ -5,6 +5,19 @@ const { getUser, updateUser } = require('./services/user_storage.js');
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
+function normalizeSymbol(symbolInput) {
+    const s = symbolInput.trim().toUpperCase();
+    if (!s) {
+        return null;
+    }
+    return s.endsWith('USDT') ? s : s + 'USDT';
+}
+
+function parsePositiveNumber(value) {
+    const num = Number(value);
+    return Number.isFinite(num) && num > 0 ? num : null;
+}
+
 bot.setMyCommands([
     { command: 'start', description: 'Запустить бота' },
     { command: 'price', description: 'Узнать цену монеты (/price BTC)' },
@@ -29,12 +42,18 @@ bot.onText(/\/start/, (msg) => {
 
 bot.onText(/\/price (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
-    const symbol = match[1].toUpperCase();
+    const symbolInput = (match[1] || '').trim();
+
+    if (!symbolInput) {
+        return bot.sendMessage(chatId, '❌ Укажи символ, например: /price BTC');
+    }
+
+    const displaySymbol = symbolInput.toUpperCase();
+    const symbol = normalizeSymbol(symbolInput);
 
     try {
-        const rawPrice = await getPrice(symbol);
-        const price = Number(rawPrice);
-        bot.sendMessage(chatId, `💰 Цена ${symbol}: ${price} USDT`);
+        const price = await getPrice(symbol);
+        bot.sendMessage(chatId, `💰 Цена ${displaySymbol}: ${price} USDT`);
     } catch (error) {
         console.log('PRICE ERROR:', error.response?.data || error.message);
         const errorMsg = error.response?.data?.msg || 'Ошибка запроса.';
@@ -44,20 +63,26 @@ bot.onText(/\/price (.+)/, async (msg, match) => {
 
 bot.onText(/\/buy (.+) (\d+)/, async (msg, match) => {
     const chatId = msg.chat.id;
-    const symbolInput = match[1];
-    const amount = Number(match[2]);
+    const rawSymbolInput = match[1] || '';
+    const symbolInput = rawSymbolInput.trim();
+    const amount = parsePositiveNumber(match[2]);
+
+    if (!symbolInput) {
+        return bot.sendMessage(chatId, '❌ Укажи монету, например: /buy BTC 100');
+    }
+
+    if (amount === null) {
+        return bot.sendMessage(chatId, '❌ Неверная сумма. Пример: /buy BTC 100');
+    }
 
     try {
-        const price = await getPrice(symbolInput);
+        const symbol = normalizeSymbol(symbolInput);
+        const price = await getPrice(symbol);
         const user = getUser(chatId);
 
         if (user.balance < amount) {
             return bot.sendMessage(chatId, 'Недостаточно средств 💸');
         }
-
-        const symbol = symbolInput.toUpperCase().endsWith('USDT')
-            ? symbolInput.toUpperCase()
-            : symbolInput.toUpperCase() + 'USDT';
 
         const quantity = amount / price;
 
@@ -71,7 +96,6 @@ bot.onText(/\/buy (.+) (\d+)/, async (msg, match) => {
             };
         }
 
-        // обновляем данные
         user.portfolio[symbol].quantity += quantity;
         user.portfolio[symbol].totalSpent += amount;
         user.portfolio[symbol].avgPrice =
@@ -175,14 +199,17 @@ bot.onText(/\/sell all/, async (msg) => {
 
 bot.onText(/\/sell (.+) (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
-    const symbolInput = match[1];
-    const amountArg = match[2];
+    const rawSymbolInput = match[1] || '';
+    const symbolInput = rawSymbolInput.trim();
+    const amountArg = (match[2] || '').trim();
 
     const user = getUser(chatId);
 
-    const symbol = symbolInput.toUpperCase().endsWith('USDT')
-        ? symbolInput.toUpperCase()
-        : symbolInput.toUpperCase() + 'USDT';
+    if (!symbolInput) {
+        return bot.sendMessage(chatId, '❌ Укажи монету, например: /sell BTC 100 или /sell BTC all');
+    }
+
+    const symbol = normalizeSymbol(symbolInput);
 
     if (!user.portfolio[symbol]) {
         return bot.sendMessage(chatId, '❌ У тебя нет этой монеты');
@@ -195,14 +222,12 @@ bot.onText(/\/sell (.+) (.+)/, async (msg, match) => {
         let amountUSD;
 
         if (amountArg.toLowerCase() === 'all') {
-            // продаём всю позицию
             quantityToSell = user.portfolio[symbol].quantity;
             amountUSD = quantityToSell * currentPrice;
         } else {
-            // продаём на указанную сумму в USD
-            amountUSD = Number(amountArg);
-            if (Number.isNaN(amountUSD) || amountUSD <= 0) {
-                return bot.sendMessage(chatId, '❌ Неверная сумма для продажи');
+            amountUSD = parsePositiveNumber(amountArg);
+            if (amountUSD === null) {
+                return bot.sendMessage(chatId, '❌ Неверная сумма для продажи. Пример: /sell BTC 100 или /sell BTC all');
             }
             quantityToSell = amountUSD / currentPrice;
         }
