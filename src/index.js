@@ -35,36 +35,52 @@ bot.onText(/\/price (.+)/, async (msg, match) => {
 
 bot.onText(/\/buy (.+) (\d+)/, async (msg, match) => {
     const chatId = msg.chat.id;
-    const symbol = match[1].toUpperCase();
+    const symbolInput = match[1];
     const amount = Number(match[2]);
 
     try {
-        const price = await getPrice(symbol);
+        const price = await getPrice(symbolInput);
         const user = getUser(chatId);
 
         if (user.balance < amount) {
             return bot.sendMessage(chatId, 'Недостаточно средств 💸');
         }
 
+        const symbol = symbolInput.toUpperCase().endsWith('USDT')
+            ? symbolInput.toUpperCase()
+            : symbolInput.toUpperCase() + 'USDT';
+
         const quantity = amount / price;
 
         user.balance -= amount;
 
         if (!user.portfolio[symbol]) {
-            user.portfolio[symbol] = 0;
+            user.portfolio[symbol] = {
+                quantity: 0,
+                totalSpent: 0,
+                avgPrice: 0
+            };
         }
 
-        user.portfolio[symbol] += quantity;
+        // обновляем данные
+        user.portfolio[symbol].quantity += quantity;
+        user.portfolio[symbol].totalSpent += amount;
+        user.portfolio[symbol].avgPrice =
+            user.portfolio[symbol].totalSpent /
+            user.portfolio[symbol].quantity;
 
         updateUser(chatId, user);
 
         bot.sendMessage(
             chatId,
-            `✅ Куплено ${quantity.toFixed(6)} ${symbol}\nОстаток: ${user.balance.toFixed(2)}$`
+            `✅ Куплено ${quantity.toFixed(6)} ${symbol}
+Средняя цена: ${user.portfolio[symbol].avgPrice.toFixed(2)}$
+Баланс: ${user.balance.toFixed(2)}$`
         );
+
     } catch (e) {
-        const errorMsg = e.response?.data?.msg || 'Не удалось получить данные с Binance.';
-        bot.sendMessage(chatId, `❌ Ошибка: ${errorMsg}`);
+        const errorMsg = e.response?.data?.msg || 'Ошибка покупки';
+        bot.sendMessage(chatId, `❌ ${errorMsg}`);
     }
 });
 
@@ -77,18 +93,29 @@ bot.onText(/\/portfolio/, async (msg) => {
 
     for (const symbol in user.portfolio) {
         try {
-            const quantity = user.portfolio[symbol];
-            const price = await getPrice(symbol);
+            const data = user.portfolio[symbol];
+            const currentPrice = await getPrice(symbol);
 
-            const value = quantity * price;
-            totalValue += value;
+            const currentValue = data.quantity * currentPrice;
+            const pnl = currentValue - data.totalSpent;
+            const pnlPercent = (pnl / data.totalSpent) * 100;
 
-            text += `${symbol}: ${quantity.toFixed(6)} ≈ ${value.toFixed(2)}$\n`;
+            totalValue += currentValue;
+
+            text += `${symbol}
+Количество: ${data.quantity.toFixed(6)}
+Средняя цена: ${data.avgPrice.toFixed(2)}$
+Текущая цена: ${currentPrice.toFixed(2)}$
+PnL: ${pnl.toFixed(2)}$ (${pnlPercent.toFixed(2)}%)
+
+\n`;
+
         } catch (e) {
-            text += `${symbol}: ошибка получения цены\n`;
+            text += `${symbol}: ошибка получения цены\n\n`;
         }
     }
-    text += `\n💰 Общая стоимость портфеля: ${totalValue.toFixed(2)}$`;
+
+    text += `💰 Общая стоимость портфеля: ${totalValue.toFixed(2)}$`;
 
     bot.sendMessage(chatId, text);
 });
