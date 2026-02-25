@@ -120,6 +120,50 @@ PnL: ${pnl.toFixed(2)}$ (${pnlPercent.toFixed(2)}%)
     bot.sendMessage(chatId, text);
 });
 
+// Продать все позиции во всём портфеле: /sell all
+bot.onText(/\/sell all/, async (msg) => {
+    const chatId = msg.chat.id;
+    const user = getUser(chatId);
+
+    const symbols = Object.keys(user.portfolio || {});
+    if (symbols.length === 0) {
+        return bot.sendMessage(chatId, 'У тебя нет открытых позиций для продажи.');
+    }
+
+    let totalReceived = 0;
+    let totalPnl = 0;
+
+    for (const symbol of symbols) {
+        const position = user.portfolio[symbol];
+        if (!position || position.quantity <= 0) continue;
+
+        try {
+            const currentPrice = await getPrice(symbol);
+            const quantityToSell = position.quantity;
+            const amountUSD = quantityToSell * currentPrice;
+            const pnl = (currentPrice - position.avgPrice) * quantityToSell;
+
+            totalReceived += amountUSD;
+            totalPnl += pnl;
+
+            user.balance += amountUSD;
+            delete user.portfolio[symbol];
+        } catch (e) {
+            // если по какому-то символу не удалось получить цену — просто пропускаем его
+        }
+    }
+
+    updateUser(chatId, user);
+
+    bot.sendMessage(
+        chatId,
+        `✅ Все доступные позиции проданы.
+Зачислено: ${totalReceived.toFixed(2)}$
+Суммарный PnL: ${totalPnl.toFixed(2)}$
+Текущий баланс: ${user.balance.toFixed(2)}$`
+    );
+});
+
 bot.onText(/\/sell (.+) (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const symbolInput = match[1];
